@@ -5,87 +5,71 @@ import math
 def crear_lista_etiquetas(movies):
     return sorted(set(etiqueta for lista in movies["genres"] for etiqueta in lista))
 
-# Calculamos la matriz TF, se calculara como un diccionario dode la clave sera (id_pelicula, etiqueta)
-# Recorreremos las peliculas y contaremos cuantas veces una etiqueta se encuentra dentro del mismo
 def calculoMatrizTF(peliculas, listaEtiquetas):
-  TF = {}
-  for _, pelicula in peliculas.iterrows():
-    for etiqueta in listaEtiquetas:
-      cuenta = pelicula["genres"].count(etiqueta)
-      TF[(pelicula["item"], etiqueta)] = cuenta
-  return TF
-
+    TF = np.zeros((len(peliculas), len(listaEtiquetas)))
+    etiqueta_idx = {etiqueta: j for j, etiqueta in enumerate(listaEtiquetas)}
+    for i, (_, pelicula) in enumerate(peliculas.iterrows()):
+        for etiqueta in pelicula["genres"]:
+            j = etiqueta_idx[etiqueta]
+            TF[i, j] += 1
+    return TF
 
 def calculoIDF(listaEtiquetas, peliculas):
-  IDF = {}
-  todos_los_productos = len(peliculas)
-  for etiqueta in listaEtiquetas:
-    contador = 0
-    for _, pelicula in peliculas.iterrows():
-      if etiqueta in pelicula["genres"]:
-        contador += 1
-    IDF[etiqueta] = math.log10(todos_los_productos / contador)
-  return IDF
-
-# Calcularemos la matriz TF-IDF, aunque sera construida como un diccionario.
-# Usaremos el diccionario TF con clave id_pelicula/etiqueta
-# Usaremos el diccionario IDF con clave etiqueta
-# El resultado es un diccionario TFIDF con clave id_pelicula/etiqueta
+    IDF = np.zeros(len(listaEtiquetas))
+    todos_los_productos = len(peliculas)
+    for j, etiqueta in enumerate(listaEtiquetas):
+        contador = sum(1 for _, pelicula in peliculas.iterrows() if etiqueta in pelicula["genres"])
+        IDF[j] = math.log10(todos_los_productos / (contador if contador > 0 else 1))
+    return IDF
 
 def calculoMatrizTFIDF(TF, IDF):
-  TFIDF = {}
-  for clave, valor in TF.items():
-    TFIDF[clave] = valor * IDF[clave[1]]
-  return TFIDF
+    return TF * IDF
 
-# Normalizaremos el diccionario TFIDF
-# Realizaremos una normalizacion por filas, es decir, que lo realizaremos teniendo en cuenta el id_producto, es decir la clave[0] de TFIDF
-# El resultado es un diccionario TFIDF_normalizado con clave id_pelicula/etiqueta
+def normalizarMatrizTFIDF(TFIDF):
+    norma = np.linalg.norm(TFIDF, axis=1, keepdims=True)
+    norma[norma == 0] = 1  # Evitar división por cero
+    return TFIDF / norma
 
-def normalizarMatrizTFIDF(peliculas, TFIDF):
-  TFIDF_normalizado = {}
-  for _, pelicula in peliculas.iterrows():
-    denominador = math.sqrt(sum(valor**2 for clave, valor in TFIDF.items() if clave[0] == pelicula["item"]))
-    etiquetas_pelicula = pelicula["genres"]
-    for etiqueta in etiquetas_pelicula:
-      TFIDF_normalizado[(pelicula["item"], etiqueta)] = TFIDF[(pelicula["item"], etiqueta)] / denominador
-  return TFIDF_normalizado
 
-# Para poder realizar el perfil de usuario es necesario calcular una variable W. Este valor sera la diferencia entre el rating real del usuario menos el promedio de rating del usuario
-# Primero deberemos conocer todos los rating que ha dado el usuario y la suma de los mismos, recorremos el diccionario de rating sacando estos dos datos para cada usuario
-# Acto seguido calcularemos la media de rating de cada usuario a partir de lo calculado previamente.
-# Finalmente calcularemos W, como un diccionario, para cada (usuario, producto) el resultado sera el rating del producto, menos la media del usuario
+def calculoW(ratings, num_usuarios, num_items_real, item2idx):
+    W = np.zeros((num_usuarios, num_items_real))
+    medias = ratings.groupby("user")["label"].mean().to_dict()
+    for _, fila in ratings.iterrows():
+        user_idx = fila["user"] - 1
+        item_idx = item2idx[fila["item"]]
+        W[user_idx, item_idx] = fila["label"] - medias[fila["user"]]
+    return W
 
-def calculoW(ratings):
-  w = {}
-  medias = {}
-  suma_ratings_usuario = {}
-  numero_raitings_usuario = {}
-  for _, fila in ratings.iterrows():
-    user = fila["user"]
-    label = fila["label"]
-    if user not in suma_ratings_usuario:
-        suma_ratings_usuario[user] = label
-        numero_raitings_usuario[user] = 1
-    else:
-        suma_ratings_usuario[user] += label
-        numero_raitings_usuario[user] += 1
+def calculoPerfilesUsuario(W, TFIDF_normalizado):
+    # TFIDF_normalizado: num_items x num_features
+    # W: num_usuarios x num_items
+    
+    return W @ TFIDF_normalizado  # resultado: num_usuarios x num_features
 
-  for user, suma in suma_ratings_usuario.items():
-        medias[user] = suma / numero_raitings_usuario[user]
+def calculoDistanciaCoseno(usuario_vector, producto_vector):
+    numerador = np.dot(usuario_vector, producto_vector)
+    norma_usuario = np.linalg.norm(usuario_vector)
+    norma_producto = np.linalg.norm(producto_vector)
+    if norma_usuario == 0 or norma_producto == 0:
+        return 0.0
+    return numerador / (norma_usuario * norma_producto)
 
-  for _, fila in ratings.iterrows():
-        user = fila["user"]
-        item = fila["item"]
-        label = fila["label"]
-        w[(user, item)] = label - medias[user]
-
-  return w
+def obtenerRecomendaciones(lista_id_buscar, num_recomendaciones, W, perfil_usuario, TFIDF_normalizado, idx2item):
+    recomendaciones = {}
+    for id_usuario in lista_id_buscar:
+        usuario_idx = id_usuario - 1
+        usuario_vector = perfil_usuario[usuario_idx, :]
+        sims = np.array([calculoDistanciaCoseno(usuario_vector, TFIDF_normalizado[i, :])
+                         if W[usuario_idx, i] == 0 else -1
+                         for i in range(TFIDF_normalizado.shape[0])])
+        top_idx = np.argsort(sims)[-num_recomendaciones:][::-1]
+        recomendaciones[id_usuario] = [idx2item[i] for i in top_idx]
+    return recomendaciones
 
 
 
 def mainDelColaborativo():
-    rating = pd.read_csv("ml-1m/ratings.dat", sep="::",
+    ratings = pd.read_csv("ml-1m/ratings.dat", sep="::",
                    names=["user", "item", "label", "timestamp"],
                    engine="python")
     
@@ -106,20 +90,28 @@ def mainDelColaborativo():
     lista_etiqueta = crear_lista_etiquetas(movies)
     print(lista_etiqueta)
 
-    # Creamos el TF
+    lista_etiqueta = crear_lista_etiquetas(movies)
     TF = calculoMatrizTF(movies, lista_etiqueta)
-
-    # Creamos el IDF
     IDF = calculoIDF(lista_etiqueta, movies)
-
-    # Calcular matriz TFIDF
     TFIDF = calculoMatrizTFIDF(TF, IDF)
+    TFIDF_normalizado = normalizarMatrizTFIDF(TFIDF)
 
-    # Normalizar la matriz
-    TFIDF_normalizado = normalizarMatrizTFIDF(movies, TFIDF)
 
-    # Perfil de usuario
-    w = calculoW(rating)
+    # Mapear IDs de películas a índices consecutivos
+    item2idx = {item_id: i for i, item_id in enumerate(sorted(movies["item"]))}
+    idx2item = {i: item_id for item_id, i in item2idx.items()}
+    num_items_real = len(item2idx)
+    num_usuarios = ratings["user"].max()
+
+    W = calculoW(ratings, num_usuarios, num_items_real, item2idx)
+    perfil_usuario = calculoPerfilesUsuario(W, TFIDF_normalizado)
+
+    lista_id_buscar = [1]
+    num_recomendaciones = 10
+    recomendaciones = obtenerRecomendaciones(lista_id_buscar, num_recomendaciones, W, perfil_usuario, TFIDF_normalizado, idx2item)
+    print("Recomendaciones para el usuario 1:", recomendaciones[1])
+
+
 
 
 
