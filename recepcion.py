@@ -1,6 +1,6 @@
 
 import socket
-#import respuestas
+import respuestas
 
 def recibir_peticion_frontend():
 
@@ -9,6 +9,7 @@ def recibir_peticion_frontend():
 
 
     mensaje = '0:oog:00001'
+    respuesta = respuestas.realizar_accion(mensaje)
 
     #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     #    s.bind((HOST, PORT))
