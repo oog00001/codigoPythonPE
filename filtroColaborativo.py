@@ -5,7 +5,13 @@ from libreco.algorithms import LightGCN  # pure data, algorithm LightGCN
 from libreco.algorithms import SVD
 from libreco.evaluation import evaluate
 
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 def filtro_colaboratibo(nombre_usuario):
+
+    tf.reset_default_graph()   # <<< IMPORTANTE
+
 
     data = pd.read_csv("ml-1m/ratings.dat", sep="::",
                     names=["user", "item", "label", "timestamp"])

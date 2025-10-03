@@ -19,16 +19,22 @@ def obtener_los_nombres_peliculas_deIDs_contenidos(recomendacion):
     return 0
 
 def realizar_accion(mensaje):
+
     partes = mensaje.split(':')
     id_mensaje = partes[0]
     print(id_mensaje)
     nombre_usuario = partes[1]
     contrasena = partes[2]
-    id_usuario = 1
+    id_usuario = 2
+
     if(id_mensaje == '0'):
         recomendacion = filtroColaborativo.filtro_colaboratibo(id_usuario)
         respuesta = obtener_los_nombres_peliculas_deIDs_colaborativo(recomendacion)
+
     if(id_mensaje == '1'):
-        respuesta = basadoEnContenido.basado_en_contenido(id_usuario)
+        recomendacion = basadoEnContenido.basado_en_contenido(id_usuario)
         respuesta = obtener_los_nombres_peliculas_deIDs_contenidos(recomendacion)
+
+    print(recomendacion)
+
     return respuesta

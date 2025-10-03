@@ -8,7 +8,7 @@ def recibir_peticion_frontend():
     PORT = 5000 
 
 
-    mensaje = '0:oog:00001'
+    mensaje = '1:oog:00001'
     respuesta = respuestas.realizar_accion(mensaje)
 
     #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
