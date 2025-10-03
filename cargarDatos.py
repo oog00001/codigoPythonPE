@@ -1,11 +1,20 @@
 import pandas as pd
 import requests
+import ObtenerPelisAPI
 
 # las peliculas son id,title,genre_ids,poster_path
 
-def cargar_peliculas():
-    movie = pd.read_csv(pruebasConAPI.movies_dir_o)
+def cargar_peliculas_tmdb():
+    movie = pd.read_csv(ObtenerPelisAPI.movies_dir_o)
     return movie
+
+def cargar_peliculas_movilens():
+    movies = pd.read_csv( "ml-1m/movies.dat", sep="::",
+        names=["item", "title", "genres"],
+        engine='python',
+        encoding="latin-1"
+    )
+    return movies
 
 
 
@@ -35,3 +44,4 @@ def cargar_usuarios():
 def cargar_ratings():
     data = pd.read_csv("ml-1m/ratings.dat", sep="::",
                     names=["user", "item", "label", "timestamp"])
+    return data
