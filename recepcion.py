@@ -2,6 +2,8 @@
 import socket
 import respuestas
 
+
+
 def recibir_peticion_frontend():
 
     HOST = '127.0.0.1'  
@@ -10,6 +12,9 @@ def recibir_peticion_frontend():
 
     mensaje = '1:oog:00001'
     respuesta = respuestas.realizar_accion(mensaje)
+
+
+
 
     #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     #    s.bind((HOST, PORT))

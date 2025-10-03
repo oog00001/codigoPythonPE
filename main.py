@@ -4,7 +4,6 @@ import os
 import recepcion
 import cargarDatos
 
-
 def main():
     numero_intentos = 2
     #cargarDatos.cargar_usuarios()
