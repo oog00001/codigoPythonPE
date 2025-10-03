@@ -7,8 +7,9 @@ import cargarDatos
 
 def main():
     numero_intentos = 2
-    while(numero_intentos != 0):
-        recepcion.recibir_peticion_frontend()
-        numero_intentos = numero_intentos - 1
+    cargarDatos.cargar_usuarios()
+    #while(numero_intentos != 0):
+    #    recepcion.recibir_peticion_frontend()
+    #    numero_intentos = numero_intentos - 1
 
 main()
