@@ -80,11 +80,6 @@ def basado_en_contenido(user):
     )
     movies['genres'] = movies['genres'].apply(lambda x: x.split('|'))
 
-    users = pd.read_csv( "ml-1m/users.dat", sep="::",
-        names=["user", "age", "sex", "occupation", "zipcode"],
-        engine='python',
-        encoding="latin-1"
-    )
     
     # Creamos lista de etiquetas
     lista_etiqueta = crear_lista_etiquetas(movies)

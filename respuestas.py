@@ -25,7 +25,7 @@ def realizar_accion(mensaje):
     print(id_mensaje)
     nombre_usuario = partes[1]
     contrasena = partes[2]
-    id_usuario = 2
+    id_usuario = 3
 
     if(id_mensaje == '0'):
         recomendacion = filtroColaborativo.filtro_colaboratibo(id_usuario)
